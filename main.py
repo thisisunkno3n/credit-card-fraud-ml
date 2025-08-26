@@ -46,7 +46,7 @@ logistic_model = LogisticRegression()
 logistic_model.fit(x_train, y_train)
 logistic_model.score(x_train, y_train)       #99.9% accuracy
 
-# ?print(classification_report(y_val, logistic_model.predict(x_val), target_names=['Not Fraud', 'Fraud']))
+# print(classification_report(y_val, logistic_model.predict(x_val), target_names=['Not Fraud', 'Fraud']))
 
 
 #                   Predicted Fraud (+)                 Predicted Not Fraud(-)
@@ -65,23 +65,21 @@ logistic_model.score(x_train, y_train)       #99.9% accuracy
 
 # can't just look at accuracy, and have to look at precision and recall too
 
-shallow_nn = Sequential()
-shallow_nn.add(InputLayer((x_train.shape[1],)))
-shallow_nn.add(Dense(2, 'relu'))
-shallow_nn.add(BatchNormalization())
-shallow_nn.add(Dense(1, 'sigmoid'))
+# ----------------------------- SHALLOW NN MODEL -----------------------------
 
-checkpoint = ModelCheckpoint('shallow_nn.keras', save_best_only=True)
-shallow_nn.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+# shallow_nn = Sequential()
+# shallow_nn.add(InputLayer((x_train.shape[1],)))
+# shallow_nn.add(Dense(2, 'relu'))
+# shallow_nn.add(BatchNormalization())
+# shallow_nn.add(Dense(1, 'sigmoid'))
 
-
+# checkpoint = ModelCheckpoint('shallow_nn.keras', save_best_only=True)
+# shallow_nn.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
 # print(shallow_nn.summary())
-
-
-#  shallow_nn.fit(x_train, y_train, validation_data=(x_val, y_val), epochs=5, callbacks=checkpoint)
+# shallow_nn.fit(x_train, y_train, validation_data=(x_val, y_val), epochs=50, callbacks=checkpoint)
 
 def neural_net_predictions(model, x):
-    return (shallow_nn.predict(x).flatten() > 0.5).astype(int)
+    return (model.predict(x).flatten() > 0.5).astype(int)
 # print(neural_net_predictions(shallow_nn, x_val))
 
 # print(classification_report(y_val, neural_net_predictions(shallow_nn, x_val), target_names=['Not Fraud', 'Fraud']))
@@ -109,6 +107,7 @@ def neural_net_predictions(model, x):
 
 
 # ----------------------------- STATS -----------------------------
+# IMBALANCED
 #                           P         R         f-1 (balance between P & R)
 # Logistic on val:          0.83      0.56      0.67      
 # shallow_nn on val:        0.68      0.75      0.71            (THIS IS USUALLY BETTER)
@@ -129,8 +128,80 @@ balanced_df = balanced_df.sample(frac=1, random_state=1)
 
 balanced_df_np = balanced_df.to_numpy()
 
-x_train_b, y_train_b = balanced_df_np[:700, :-1],  balanced_df_np[:700, -1]         # uses first 700 of 982 vals
-x_test_b, y_test_b = balanced_df_np[700: 842, :-1],  balanced_df_np[700:842, -1]    # uses 700-842 vals, 142 total
-x_val_b, y_val_b = balanced_df_np[842:, :-1],  balanced_df_np[842:, -1]    # uses 700-842 vals, 142 total
+x_train_b, y_train_b = balanced_df_np[:700, :-1],  balanced_df_np[:700, -1].astype(int)      # uses first 700 of 982 vals
+x_test_b, y_test_b = balanced_df_np[700: 842, :-1],  balanced_df_np[700:842, -1].astype(int)    # uses 700-842 vals, 142 total
+x_val_b, y_val_b = balanced_df_np[842:, :-1],  balanced_df_np[842:, -1].astype(int)    # uses 700-842 vals, 142 total
 
-print(x_train_b.shape, y_train_b.shape, x_test_b.shape, y_test_b.shape, x_val_b.shape, y_val_b.shape)
+# print(x_train_b.shape, y_train_b.shape, x_test_b.shape, y_test_b.shape, x_val_b.shape, y_val_b.shape)
+
+# print(pd.Series(y_train_b).value_counts(), pd.Series(y_test_b).value_counts(), pd.Series(y_val_b).value_counts())
+
+logistic_model = LogisticRegression()
+logistic_model.fit(x_train_b, y_train_b)
+# logistic_model.score(x_train_b, y_train_b)  #95.4% accuracy bc last one was inbalanced dataset
+
+# print(classification_report(y_val_b, logistic_model.predict(x_val_b), target_names=['Not Fraud', 'Fraud']))
+
+# ----------------------------- STATS -----------------------------
+# BALANCED
+#               precision    recall  f1-score   support
+
+# Logistic Model: 
+#    Not Fraud       0.96      0.93      0.94        72
+#        Fraud       0.93      0.96      0.94        70
+# Shallow NN 2 ReLU
+#    Not Fraud       0.93      0.92      0.92        72
+#        Fraud       0.92      0.93      0.92        70
+# Shallow NN 1 ReLU
+#   Not Fraud       0.87      0.96      0.91        72
+#        Fraud       0.95      0.86      0.90        70
+
+
+# ----------------------------- Balanced Shallow NN 2 ReLU Model -----------------------------
+shallow_nn_b = Sequential()
+shallow_nn_b.add(InputLayer((x_train.shape[1],)))
+shallow_nn_b.add(Dense(2, 'relu'))
+shallow_nn_b.add(BatchNormalization())
+shallow_nn_b.add(Dense(1, 'sigmoid'))
+
+checkpoint = ModelCheckpoint('shallow_nn_b.keras', save_best_only=True)
+shallow_nn_b.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+shallow_nn_b.fit(x_train_b, y_train_b, validation_data=(x_val_b, y_val_b), epochs=40, callbacks=checkpoint)
+
+# print(classification_report(y_val_b, neural_net_predictions(shallow_nn_b, x_val_b), target_names=['Not Fraud', 'Fraud']))
+
+print(classification_report(y_test_b, neural_net_predictions(shallow_nn_b, x_test_b), target_names=['Not Fraud', 'Fraud']))
+
+# ----------------------------- Balanced Shallow NN 1 ReLU Model -----------------------------
+# shallow_nn_b1 = Sequential()
+# shallow_nn_b1.add(InputLayer((x_train.shape[1],)))
+# shallow_nn_b1.add(Dense(1, 'relu'))
+# shallow_nn_b1.add(BatchNormalization())
+# shallow_nn_b1.add(Dense(1, 'sigmoid'))
+
+# checkpoint = ModelCheckpoint('shallow_nn_b.keras', save_best_only=True)
+# shallow_nn_b1.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+# shallow_nn_b1.fit(x_train_b, y_train_b, validation_data=(x_val_b, y_val_b), epochs=40, callbacks=checkpoint)
+
+# print(classification_report(y_val_b, neural_net_predictions(shallow_nn_b1, x_val_b), target_names=['Not Fraud', 'Fraud']))
+
+
+
+# # ----------------------------- Balanced Gradient Boosting Model -----------------------------
+
+# gbc_b = GradientBoostingClassifier(n_estimators=100, learning_rate=1.0, max_depth=2, random_state=0)
+# gbc_b.fit(x_train_b, y_train_b)
+# print(classification_report(y_val_b, gbc_b.predict(x_val_b), target_names=['Not Fraud', 'Fraud']))
+
+
+## ------- ---------------------- Balanced Support Vector Machine Model -----------------------------
+
+# svc_b = LinearSVC()
+# # svc_b = LinearSVC(class_weight='balanced') - this is too aggressive and gives me 0.07 precision Fraud
+# svc_b.fit(x_train_b, y_train_b)
+# print(classification_report(y_val_b, svc_b.predict(x_val_b), target_names=['Not Fraud', 'Fraud']))
+
+
+# -----------------------------  TESTED NEURAL NET ----------------------------- 
+#    Not Fraud       0.90      0.95      0.92        73
+#        Fraud       0.94      0.88      0.91        69
